@@ -105,27 +105,33 @@ def upload_detect_view(request):
             image_file = request.FILES.get("image")
             if not image_file: return JsonResponse({"success": False, "message": "No image provided."})
 
-            # Save to get a physical path
-            detection = Detection.objects.create(user=request.user, image=image_file)
+            # Save with safe defaults to get a physical path for the AI engine
+            detection = Detection.objects.create(
+                user=request.user, 
+                image=image_file,
+                is_cracked=False,
+                cnn_accuracy=0.0,
+                cnn_confidence=0.0,
+                resnet_accuracy=0.0,
+                resnet_confidence=0.0,
+                xception_accuracy=0.0,
+                xception_confidence=0.0
+            )
             
             # Detect using Xception Engine (most accurate)
             results = run_perfect_prediction(detection.image.path)
             
             if "error" in results:
+                # Cleanup failed record
+                detection.delete()
                 return JsonResponse({"success": False, "message": results["error"]})
 
-            # Save ALL results to satisfy database NOT NULL constraints
+            # Update with REAL results
             detection.is_cracked = results["is_cracked"]
-            
-            # Xception
             detection.xception_accuracy = results["xception"]["accuracy"]
             detection.xception_confidence = results["xception"]["confidence"]
-            
-            # CNN (Derived from Xception results for consistency)
             detection.cnn_accuracy = results["cnn"]["accuracy"]
             detection.cnn_confidence = results["cnn"]["confidence"]
-            
-            # ResNet (Derived from Xception results for consistency)
             detection.resnet_accuracy = results["resnet"]["accuracy"]
             detection.resnet_confidence = results["resnet"]["confidence"]
             
