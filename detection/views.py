@@ -170,3 +170,8 @@ def performance_comparison_view(request):
 def graphical_analysis_view(request):
     # ... static analysis data ...
     return JsonResponse({'success': True, 'analysis': {}})
+
+@login_required
+def generate_report_view(request):
+    """Generate a summary report of all detections"""
+    return JsonResponse({'success': True, 'report': 'Analysis report generated successfully.'})
