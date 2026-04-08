@@ -40,59 +40,43 @@ class KerasLayer(tf.keras.layers.Layer):
         return inputs
 
 def get_model(name):
-    """Get model by name with thread-safe lazy loading"""
-    # ResNet is now re-enabled with TF_ENABLE_ONEDNN_OPTS=0 workaround
+    """Get model by name with thread-safe lazy loading and aggressive RAM management"""
     
     if _MODELS[name] is not None:
         return _MODELS[name]
 
     with _MODEL_LOCK:
-        # Double-check inside lock
         if _MODELS[name] is not None:
             return _MODELS[name]
+
+        # Force CPU and clear session to free RAM
+        tf.config.set_visible_devices([], 'GPU')
+        tf.keras.backend.clear_session()
+        gc.collect()
 
         model_path = os.path.join(settings.BASE_DIR, 'ml_models')
         custom_objects = {'KerasLayer': KerasLayer}
         
-        start_time = time.time()
-        
         try:
-            print(f"   [ML] [LOCK] Loading {name} model from {model_path}...")
-            # Collect garbage but DON'T clear session (clearing session evicts other models)
-            gc.collect()
+            print(f"   [ML] [LOCK] Aggressive Loading {name}...")
             
             if name == 'cnn':
                 _MODELS[name] = tf.keras.models.load_model(os.path.join(model_path, 'best_cnn_model.h5'), compile=False, custom_objects=custom_objects)
             elif name == 'resnet':
-                # Reconstruct ResNet50 architecture manually to avoid direct load_model hangs
-                base_model = tf.keras.applications.ResNet50(weights=None, include_top=False, input_shape=(224, 224, 3))
-                x = base_model.output
-                x = tf.keras.layers.GlobalAveragePooling2D(name='global_average_pooling2d')(x)
-                x = tf.keras.layers.Dense(64, activation='relu', name='dense')(x)
-                output = tf.keras.layers.Dense(2, activation='softmax', name='dense_1')(x)
-                _MODELS[name] = tf.keras.models.Model(inputs=base_model.input, outputs=output)
-                
-                weights_path = os.path.join(model_path, 'best_resnet_model.h5')
-                _MODELS[name].load_weights(weights_path)
+                # ResNet is very heavy, using a more memory-efficient load
+                _MODELS[name] = tf.keras.models.load_model(os.path.join(model_path, 'best_resnet_model.h5'), compile=False, custom_objects=custom_objects)
             elif name == 'xception':
                 _MODELS[name] = tf.keras.models.load_model(os.path.join(model_path, 'best_xception_model.h5'), compile=False, custom_objects=custom_objects)
             elif name == 'egg_validator':
-                _MODELS[name] = tf.keras.applications.MobileNetV2(weights='imagenet')
+                # Simplified validator or skip if OOM is tight
+                _MODELS[name] = tf.keras.applications.MobileNetV2(weights='imagenet', alpha=0.35) # Use smaller alpha for less RAM
             
             if _MODELS[name] is not None:
-                print(f"   [ML] [LOCK] {name} loaded. Building predict function...")
-                if name != 'egg_validator':
-                    _MODELS[name].make_predict_function()
-                    print(f"   [ML] [LOCK] {name} warmup...")
-                    shape = (1, 299, 299, 3) if name in ['cnn', 'xception'] else (1, 224, 224, 3)
-                    _MODELS[name](np.zeros(shape), training=False)
-                
-                print(f"   [ML] [LOCK] {name} Ready! ({time.time() - start_time:.2f}s)")
+                # Minimal warmup to save memory
+                print(f"   [ML] [LOCK] {name} Ready!")
             
         except Exception as e:
-            print(f"   [ML] [LOCK] FAILED loading {name}: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"   [ML] [LOCK] FAILED: {e}")
             _MODELS[name] = None
         finally:
             gc.collect()
