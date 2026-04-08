@@ -121,6 +121,14 @@ function analyzeUploadedImage() {
         showNotification('Please upload an image first!', 'error');
         return;
     }
+    
+    // UI Feedback: Show analysis is in progress
+    showNotification('Analyzing Image... Please wait (this might take 30-60s for the first run)', 'info');
+    const analyzeBtn = event.target.closest('button');
+    const originalBtnText = analyzeBtn.innerHTML;
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+
     const formData = new FormData();
     formData.append('image', currentFile);
     formData.append('csrfmiddlewaretoken', csrftoken);
@@ -130,14 +138,22 @@ function analyzeUploadedImage() {
         body: formData
     })
     .then(res => {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = originalBtnText;
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
     })
     .then(data => {
-        if (data.success) displayResults(data.results);
-        else showNotification(data.message, 'error');
+        if (data.success) {
+            displayResults(data.results);
+            showNotification('Analysis Complete!', 'success');
+        } else {
+            showNotification(data.message, 'error');
+        }
     })
     .catch(err => {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = originalBtnText;
         console.error('Upload analysis error:', err);
         showNotification('Analysis failed or timed out: ' + err.message, 'error');
     });
@@ -170,6 +186,14 @@ function captureImage() {
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
     const imageData = canvas.toDataURL('image/jpeg');
+    
+    // UI Feedback
+    showNotification('AI Analysis in progress... Please wait', 'info');
+    const captureBtn = document.getElementById('captureBtn');
+    const originalText = captureBtn.innerHTML;
+    captureBtn.disabled = true;
+    captureBtn.innerHTML = 'Analyzing...';
+
     stopCamera();
     
     fetch('/detection/camera/', {
@@ -181,14 +205,22 @@ function captureImage() {
         body: JSON.stringify({ image: imageData })
     })
     .then(res => {
+        captureBtn.disabled = false;
+        captureBtn.innerHTML = originalText;
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
     })
     .then(data => {
-        if (data.success) displayResults(data.results);
-        else showNotification(data.message, 'error');
+        if (data.success) {
+            displayResults(data.results);
+            showNotification('Camera Analysis Complete!', 'success');
+        } else {
+            showNotification(data.message, 'error');
+        }
     })
     .catch(err => {
+        captureBtn.disabled = false;
+        captureBtn.innerHTML = originalText;
         console.error('Camera analysis error:', err);
         showNotification('Camera analysis failed: ' + err.message, 'error');
     });
