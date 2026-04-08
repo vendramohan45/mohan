@@ -170,12 +170,15 @@ def predict_egg_crack(image_path):
     
     # Use training result accuracies for the response
     results_path = os.path.join(settings.BASE_DIR, 'ml_models')
-    with open(os.path.join(results_path, 'cnn_training_result.json')) as f:
-        acc_cnn = json.load(f)['val_accuracy']
-    with open(os.path.join(results_path, 'resnet_result.json')) as f:
-        acc_res = json.load(f)['val_accuracy']
-    with open(os.path.join(results_path, 'xception_model_result.json')) as f:
-        acc_xcp = json.load(f)['val_accuracy']
+    try:
+        with open(os.path.join(results_path, 'cnn_training_result.json')) as f:
+            acc_cnn = json.load(f)['val_accuracy']
+        with open(os.path.join(results_path, 'resnet_result.json')) as f:
+            acc_res = json.load(f)['val_accuracy']
+        with open(os.path.join(results_path, 'xception_model_result.json')) as f:
+            acc_xcp = json.load(f)['val_accuracy']
+    except:
+        acc_cnn, acc_res, acc_xcp = 0.0, 0.0, 0.0
 
     # Final verdict weighted towards Xception (if available)
     if pred_xcp is not None:
@@ -347,12 +350,17 @@ def performance_comparison_view(request):
 
     # Load actual comparison data from JSONs
     results_path = os.path.join(settings.BASE_DIR, 'ml_models')
-    with open(os.path.join(results_path, 'cnn_training_result.json')) as f:
-        data_cnn = json.load(f)
-    with open(os.path.join(results_path, 'resnet_result.json')) as f:
-        data_res = json.load(f)
-    with open(os.path.join(results_path, 'xception_model_result.json')) as f:
-        data_xcp = json.load(f)
+    try:
+        with open(os.path.join(results_path, 'cnn_training_result.json')) as f:
+            data_cnn = json.load(f)
+        with open(os.path.join(results_path, 'resnet_result.json')) as f:
+            data_res = json.load(f)
+        with open(os.path.join(results_path, 'xception_model_result.json')) as f:
+            data_xcp = json.load(f)
+    except:
+        data_cnn = {"val_accuracy": 0.0, "val_loss": 0.0}
+        data_res = {"val_accuracy": 0.0, "val_loss": 0.0}
+        data_xcp = {"val_accuracy": 0.0, "val_loss": 0.0}
 
     comparison = {
         'cnn': {
@@ -402,12 +410,17 @@ def graphical_analysis_view(request):
 
     # Load actual precision/recall/AUC if available, else use realistic based on JSON
     results_path = os.path.join(settings.BASE_DIR, 'ml_models')
-    with open(os.path.join(results_path, 'cnn_training_result.json')) as f:
-        data_cnn = json.load(f)
-    with open(os.path.join(results_path, 'resnet_result.json')) as f:
-        data_res = json.load(f)
-    with open(os.path.join(results_path, 'xception_model_result.json')) as f:
-        data_xcp = json.load(f)
+    try:
+        with open(os.path.join(results_path, 'cnn_training_result.json')) as f:
+            data_cnn = json.load(f)
+        with open(os.path.join(results_path, 'resnet_result.json')) as f:
+            data_res = json.load(f)
+        with open(os.path.join(results_path, 'xception_model_result.json')) as f:
+            data_xcp = json.load(f)
+    except:
+        data_cnn = {"val_accuracy": 0.0, "val_loss": 0.0}
+        data_res = {"val_accuracy": 0.0, "val_loss": 0.0}
+        data_xcp = {"val_accuracy": 0.0, "val_loss": 0.0}
 
     # Generate realistic training data history reflecting the actual final accuracies
     epochs = list(range(1, 14)) # Training was for 13 epochs based on source code
@@ -525,9 +538,7 @@ def camera_detect_view(request):
     return JsonResponse({"success": False, "message": "Invalid request method"})
 
 # ==========================================================
-# 🔹 Explicit Initialization (Optional for lazy but good for server start)
+# 🔹 Explicit Initialization (Disabled for Render Startup)
 # ==========================================================
-# Explicitly initialize models on server start
-# Loading only lightweight validator and Xception to save RAM
-for name in ['egg_validator', 'xception']:
-    get_model(name)
+# Explicit initialization disabled to prevent RAM issues on startup.
+# Models will load on-demand when prediction is requested.
