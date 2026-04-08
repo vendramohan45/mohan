@@ -228,6 +228,16 @@ def login_view(request):
             if user is not None:
                 if user.status.lower() == 'active' or user.is_staff:
                     login(request, user)
+                    
+                    # Background Pre-load AI Model so it's ready for analysis
+                    try:
+                        import threading
+                        from detection.views import get_model
+                        threading.Thread(target=get_model, daemon=True).start()
+                        print(">>>> [SYSTEM] Background AI Warmup Started...")
+                    except Exception as e:
+                        print(f"DEBUG: Preload error: {e}")
+
                     messages.success(request, f'Welcome back, {user.full_name or user.username}!')
                     return redirect('dashboard')
                 else:
@@ -284,6 +294,15 @@ def admin_login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None and user.role == 'admin':
             login(request, user)
+            
+            # Background Pre-load AI Model
+            try:
+                import threading
+                from detection.views import get_model
+                threading.Thread(target=get_model, daemon=True).start()
+                print(">>>> [SYSTEM] Admin Background AI Warmup Started...")
+            except: pass
+
             request.session['is_admin_logged_in'] = True
             return redirect('dashboard')
         else:
