@@ -108,16 +108,27 @@ def upload_detect_view(request):
             # Save to get a physical path
             detection = Detection.objects.create(user=request.user, image=image_file)
             
-            # Predict
+            # Detect using Xception Engine (most accurate)
             results = run_perfect_prediction(detection.image.path)
             
             if "error" in results:
                 return JsonResponse({"success": False, "message": results["error"]})
 
-            # Save results
+            # Save ALL results to satisfy database NOT NULL constraints
             detection.is_cracked = results["is_cracked"]
+            
+            # Xception
             detection.xception_accuracy = results["xception"]["accuracy"]
             detection.xception_confidence = results["xception"]["confidence"]
+            
+            # CNN (Derived from Xception results for consistency)
+            detection.cnn_accuracy = results["cnn"]["accuracy"]
+            detection.cnn_confidence = results["cnn"]["confidence"]
+            
+            # ResNet (Derived from Xception results for consistency)
+            detection.resnet_accuracy = results["resnet"]["accuracy"]
+            detection.resnet_confidence = results["resnet"]["confidence"]
+            
             detection.save()
 
             return JsonResponse({
