@@ -103,25 +103,27 @@ def is_egg_image(image_path):
     """Validate if the image contains an egg using MobileNetV2"""
     try:
         model = get_model('egg_validator')
+        if model is None:
+            print("   [VALIDATE] Skip: Model not loaded")
+            return True, "unknown"
+            
         img = tf.keras.preprocessing.image.load_img(image_path, target_size=(224, 224))
         x = tf.keras.preprocessing.image.img_to_array(img)
         x = np.expand_dims(x, axis=0)
         x = tf.keras.applications.mobilenet_v2.preprocess_input(x)
         
-        # Using model(x, training=False) is faster and avoids tracing for single images
         preds = model(x, training=False)
         decoded = tf.keras.applications.mobilenet_v2.decode_predictions(preds.numpy(), top=5)[0]
         
-        # Extended keywords for better validation (ImageNet often misclassifies eggs as balls)
         egg_keywords = ['egg', 'hen', 'cock', 'partridge', 'quail', 'nest', 'ball', 'ping-pong', 'golf', 'bubble', 'white', 'round', 'screw']
         for _, label, score in decoded:
             if any(keyword in label.lower().replace('-', ' ') for keyword in egg_keywords):
                 return True, label
         
-        return False, decoded[0][1] # Return most likely class if not an egg
+        return False, decoded[0][1]
     except Exception as e:
-        print(f"Egg validation error: {e}")
-        return True, "unknown" # Fallback to true if validation fails
+        print(f"   [VALIDATE] Warning: Validation failed ({e}). Proceeding anyway.")
+        return True, "unknown" # Fallback to true so we don't block predictions if validator fails
 
 # ==========================================================
 # 🔹 Actual ML Prediction Function
