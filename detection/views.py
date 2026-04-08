@@ -36,24 +36,15 @@ def get_model(name='xception'):
         model_path = os.path.join(settings.BASE_DIR, 'ml_models', 'best_xception_model.h5')
         
         try:
-            print(f">>>> [AI ENGINE] Initializing Xception from {model_path}...")
+            print(f">>>> [AI ENGINE] Direct Loading Xception from {model_path}...")
             
-            # Use specific loading options to keep memory stable on 512MB
-            # By reconstruction of arch + weights loading
-            base_model = tf.keras.applications.Xception(weights=None, include_top=False, input_shape=(299, 299, 3))
-            x = base_model.output
-            x = tf.keras.layers.GlobalAveragePooling2D()(x)
-            x = tf.keras.layers.Dense(64, activation='relu')(x)
-            output = tf.keras.layers.Dense(2, activation='softmax')(x)
-            model = tf.keras.models.Model(inputs=base_model.input, outputs=output)
+            # Using direct load but without compilation to save RAM
+            _MODELS[name] = tf.keras.models.load_model(model_path, compile=False)
             
-            model.load_weights(model_path)
+            # Warmup - limited to save memory
+            _MODELS[name](np.zeros((1, 299, 299, 3)), training=False)
             
-            # Warmup is critical to 'lock' the model in RAM
-            model(np.zeros((1, 299, 299, 3)), training=False)
-            
-            _MODELS[name] = model
-            print(">>>> [AI ENGINE] Xception is ONLINE.")
+            print(">>>> [AI ENGINE] Xception is ONLINE (Direct Load).")
             
         except Exception as e:
             print(f">>>> [AI ENGINE] ERROR: {e}")
