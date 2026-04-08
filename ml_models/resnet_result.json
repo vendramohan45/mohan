@@ -1,0 +1,1 @@
+{"success": true, "message": "ResNet model trained and result cached successfully.", "val_accuracy": 71.11, "val_loss": 0.5629}
