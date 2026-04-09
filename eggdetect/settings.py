@@ -115,6 +115,10 @@ LOGOUT_REDIRECT_URL = 'login'
 # CSRF Settings
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.hf.space',
+    'https://*.huggingface.co'
+]
 SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Session Settings
